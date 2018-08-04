@@ -48,6 +48,7 @@ import io
 import os.path
 import urllib.parse
 import posixpath
+from subprocess import Popen, PIPE
 
 BRAND_BUILD_SUBPROJECTS=["xenguestagent","xenvss"]
 
@@ -332,7 +333,7 @@ def make_brand_dll(culture):
         os.remove(buildsat_script)
     file = open(buildsat_script,'w')
     file.write("echo Building satellite dll\n")
-    file.write("call \"%VS%\\VC\\vcvarsall.bat\" x86\n")
+    file.write("call \"%VS%\\VC\\Auxiliary\\Build\\vcvarsall.bat\" x86\n")
     file.write("set FrameworkVersion=v3.5\n")
     file.write("mkdir BrandSupport\n")
     file.write("resgen.exe proj\\textstrings.txt proj\\textstrings.resources\n")
@@ -353,7 +354,7 @@ def callfnout(cmd):
     if ret != 0:
         raise(Exception("Error %d in : %s" % (ret, cmd)))
     print("------------------------------------------------------------")
-    return output.decode('utf-8')
+    return output #.decode('utf-8')
 
 
 def callfn(cmd):
@@ -913,11 +914,15 @@ def copyfiles(name, subproj, dest, arch="", debug=False):
 def shell(command):
     print (command)
     sys.stdout.flush()
-    pipe = os.popen(command, 'r', 1)
-    for line in pipe:
+	
+    with Popen(command, shell=True, stdout=PIPE, stderr=PIPE, stdin=PIPE) as p:
+        output, errors = p.communicate()
+    lines = output.splitlines()
+
+    for line in lines:
         print(line.rstrip())
 
-    return pipe.close()
+    return p.stdin.close()
 
 def load_specific_manifest(brand_build):
     manifest_name = "manifestspecific"
@@ -969,6 +974,7 @@ def archive_build_input(archiveSrc):
     archive('installer.tar', ['installer'])
 
 def build_installer_apps(location, outbuilds, checked):
+    print("-------------------------------------------------")
     msbuild('installwizard','x64', checked )
     msbuild('installwizard','Win32', checked )
     msbuild('installwizard','Any CPU', checked )
